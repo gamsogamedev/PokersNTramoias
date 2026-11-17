@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using UnityEngine;
+using System;
 
 /// <summary>
 /// Gerencia o baralho de 52 cartas: montagem, shuffle e distribuição.
@@ -7,11 +7,13 @@ using UnityEngine;
 public class Deck
 {
     private List<Card> cards = new List<Card>();
+    private readonly Random random;
 
     public int CardsRemaining => cards.Count;
 
-    public Deck()
+    public Deck(Random random = null)
     {
+        this.random = random ?? new Random();
         Reset();
     }
 
@@ -37,7 +39,7 @@ public class Deck
     {
         for (int i = cards.Count - 1; i > 0; i--)
         {
-            int j = Random.Range(0, i + 1);
+            int j = random.Next(i + 1);
             (cards[i], cards[j]) = (cards[j], cards[i]);
         }
     }
@@ -49,7 +51,6 @@ public class Deck
     {
         if (cards.Count == 0)
         {
-            Debug.LogWarning("Deck: tentativa de puxar carta com o baralho vazio.");
             return null;
         }
 
@@ -72,7 +73,12 @@ public class Deck
     /// </summary>
     public void InsertAt(Card card, int position)
     {
-        position = Mathf.Clamp(position, 0, cards.Count);
+        if (card == null) throw new ArgumentNullException(nameof(card));
+        if ((int)card.rank < 2 || (int)card.rank > 14 || (int)card.suit < 0 || (int)card.suit > 3)
+            throw new ArgumentException("Invalid card.", nameof(card));
+        if (cards.Exists(c => c.suit == card.suit && c.rank == card.rank))
+            throw new ArgumentException("This card is already in the deck.", nameof(card));
+        position = Math.Max(0, Math.Min(position, cards.Count));
         cards.Insert(position, card);
     }
 }
