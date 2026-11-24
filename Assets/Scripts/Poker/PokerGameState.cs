@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 public enum PokerMatchOutcome { InProgress, PlayerWon, Caught, PlayerBankrupt }
 public enum PokerStreet { NotStarted, Preflop, Flop, Turn, River, Showdown }
-public enum PokerGameEventType { HandStarted, StreetRevealed, Checked, Called, Raised, Folded, CardSwapped, Showdown }
+public enum PokerGameEventType { HandStarted, StreetRevealed, Checked, Called, Raised, Folded, CardSwapped, Showdown, OpponentPeeked }
 
 /// <summary>Detached seat data. Modifying a returned Card cannot alter the live game.</summary>
 public sealed class PokerSeatSnapshot
@@ -12,14 +12,17 @@ public sealed class PokerSeatSnapshot
     public int Chips { get; }
     public bool HasFolded { get; }
     public bool IsEliminated { get; }
+    /// <summary>True when the dealer flipped this seat's cards during the current hand.</summary>
+    public bool IsPeeked { get; }
     public bool IsAllIn => !IsEliminated && !HasFolded && Chips == 0;
     public int StreetContribution { get; }
     public int TotalContribution { get; }
     public IReadOnlyList<Card> HoleCards { get; }
 
     internal PokerSeatSnapshot(string name, int chips, bool folded, bool eliminated, int streetContribution,
-        int totalContribution, IReadOnlyList<Card> cards)
+        int totalContribution, IReadOnlyList<Card> cards, bool peeked)
     {
+        IsPeeked = peeked;
         Name = name; Chips = chips; HasFolded = folded; IsEliminated = eliminated;
         StreetContribution = streetContribution; TotalContribution = totalContribution;
         HoleCards = PokerGameState.CopyCards(cards);
@@ -30,6 +33,7 @@ public sealed class PokerSeatSnapshot
 public sealed class PokerGameSnapshot
 {
     public int Suspicion { get; internal set; }
+    public int PeekSuspicionCost { get; internal set; }
     public int SuccessfulSwapCount { get; internal set; }
     public PokerMatchOutcome MatchOutcome { get; internal set; }
     public IReadOnlyList<int> Payouts { get; internal set; }
@@ -95,6 +99,8 @@ public sealed class PokerGameState
     private readonly Seat[] seats;
     private readonly bool[] pending;
     private readonly int[] payouts;
+    private readonly bool[] peeked;
+    private readonly int peekSuspicionCost;
     public int Suspicion { get; private set; }
     public int SuccessfulSwapCount { get; private set; }
     public PokerMatchOutcome MatchOutcome { get; private set; }
@@ -129,20 +135,32 @@ public sealed class PokerGameState
     public bool CanCheckOrCall => ActingPlayerIndex >= 0
         && (!RequiresOpeningBet || Street != PokerStreet.Preflop || CurrentBet > 0);
 
+    public int PeekSuspicionCost => peekSuspicionCost;
+
+    /// <summary>The dealer may flip one live enemy seat per hand, once, while the hand is in progress.</summary>
+    public bool CanPeek(int seatIndex) =>
+        seatIndex >= 0 && seatIndex < seats.Length && seatIndex != ControlledPlayerIndex
+        && MatchOutcome == PokerMatchOutcome.InProgress && HandNumber > 0 && !IsHandOver
+        && !seats[seatIndex].Eliminated && !seats[seatIndex].Folded && !peeked[seatIndex];
+
     public event Action<PokerGameEvent> StateChanged;
 
     public PokerGameState(int playerCount = 3, int controlledPlayerIndex = 0,
-        int startingChips = 1000, int minimumBet = 20, Random random = null, bool requiresOpeningBet = true)
+        int startingChips = 1000, int minimumBet = 20, Random random = null, bool requiresOpeningBet = true,
+        int peekSuspicionCost = 10)
     {
         if (playerCount < 2 || playerCount > 10) throw new ArgumentOutOfRangeException(nameof(playerCount));
         if (controlledPlayerIndex < 0 || controlledPlayerIndex >= playerCount)
             throw new ArgumentOutOfRangeException(nameof(controlledPlayerIndex));
         if (minimumBet <= 0 || startingChips <= 0 || (long)startingChips * playerCount > int.MaxValue)
             throw new ArgumentOutOfRangeException(nameof(startingChips), "Stacks and minimum bet must be positive and total chips must fit the pot counter.");
+        if (peekSuspicionCost < 0 || peekSuspicionCost > 100) throw new ArgumentOutOfRangeException(nameof(peekSuspicionCost));
         this.startingChips = startingChips; this.minimumBet = minimumBet;
+        this.peekSuspicionCost = peekSuspicionCost;
         ControlledPlayerIndex = controlledPlayerIndex;
         RequiresOpeningBet = requiresOpeningBet;
         seats = new Seat[playerCount]; pending = new bool[playerCount]; payouts = new int[playerCount];
+        peeked = new bool[playerCount];
         for (int i = 0; i < seats.Length; i++) seats[i] = new Seat { Chips = startingChips };
         deck = new Deck(random);
     }
@@ -164,6 +182,7 @@ public sealed class PokerGameState
             throw new InvalidOperationException("A new hand requires an active match and a settled previous hand.");
         deck.Reset(); deck.Shuffle();
         board.Clear(); reserved.Clear(); discards.Clear();
+        Array.Clear(peeked, 0, peeked.Length);
         foreach (Seat seat in seats)
         {
             seat.Cards.Clear(); seat.Eliminated = seat.Chips == 0;
@@ -259,6 +278,26 @@ public sealed class PokerGameState
         Publish(PokerGameEventType.CardSwapped, ControlledPlayerIndex, 0, index, reservedIndex, replaced, replacement);
     }
 
+    /// <summary>
+    /// Flips an enemy seat's cards for the dealer until the hand ends, at a fixed suspicion cost.
+    /// Reaching full suspicion ends the match exactly like a swap would.
+    /// </summary>
+    public void PeekOpponent(int seatIndex)
+    {
+        ValidateIndex(seatIndex);
+        if (!CanPeek(seatIndex)) throw new InvalidOperationException("This seat cannot be peeked at right now.");
+        peeked[seatIndex] = true;
+        int before = Suspicion;
+        Suspicion = Math.Min(100, Suspicion + peekSuspicionCost);
+        if (Suspicion == 100)
+        {
+            MatchOutcome = PokerMatchOutcome.Caught;
+            IsHandOver = true;
+            ActingPlayerIndex = -1;
+        }
+        Publish(PokerGameEventType.OpponentPeeked, seatIndex, Suspicion - before);
+    }
+
     internal EnemyObservation ObserveEnemyTurn()
     {
         int actor = ActingPlayerIndex;
@@ -297,11 +336,11 @@ public sealed class PokerGameState
         {
             Seat seat = seats[i];
             players[i] = new PokerSeatSnapshot($"Player {i + 1}", seat.Chips, seat.Folded, seat.Eliminated,
-                seat.StreetContribution, seat.TotalContribution, seat.Cards);
+                seat.StreetContribution, seat.TotalContribution, seat.Cards, peeked[i]);
         }
         return new PokerGameSnapshot
         {
-            Suspicion = Suspicion, SuccessfulSwapCount = SuccessfulSwapCount, MatchOutcome = MatchOutcome,
+            Suspicion = Suspicion, PeekSuspicionCost = peekSuspicionCost, SuccessfulSwapCount = SuccessfulSwapCount, MatchOutcome = MatchOutcome,
             Payouts = Array.AsReadOnly((int[])payouts.Clone()),
             HandNumber = HandNumber, Version = Version, Street = Street, ActingPlayerIndex = ActingPlayerIndex,
             ControlledPlayerIndex = ControlledPlayerIndex, Pot = Pot, CurrentBet = CurrentBet, MinimumRaise = MinimumRaise,

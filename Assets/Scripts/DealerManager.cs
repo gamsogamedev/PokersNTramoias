@@ -13,6 +13,8 @@ public class DealerManager : MonoBehaviour
     [Min(1)] public int startingChips = 1000;
     [Min(1)] public int minimumBet = 20;
     public bool showAllHoleCards = true;
+    [Tooltip("Suspeita fixa somada cada vez que você espia as cartas de um adversário.")]
+    [Range(0, 100)] public int peekSuspicionCost = 10;
 
     [Header("Optional TextMeshPro UI")]
     public TMP_Text[] textosMaosJogadores;
@@ -65,7 +67,8 @@ public class DealerManager : MonoBehaviour
     {
         if (Game == null)
         {
-            Game = new PokerGameState(numeroDeJogadores, controlledPlayerIndex, startingChips, minimumBet);
+            Game = new PokerGameState(numeroDeJogadores, controlledPlayerIndex, startingChips, minimumBet,
+                peekSuspicionCost: peekSuspicionCost);
             Game.StateChanged += OnStateChanged;
         }
         if (Game.MatchOutcome != PokerMatchOutcome.InProgress) Game.StartNewMatch();
