@@ -22,12 +22,15 @@ built at runtime and needs no Inspector wiring or card sprite assets.
    card to replace the river. Only one replacement is allowed per street.
 6. Finish river betting and click **Showdown**. If everyone but one seat folds earlier,
    the hand ends immediately and that player receives 100% equity.
-7. **New random hand** reshuffles, resets stacks/pot/discards/folds, deals two new
-   reserved cards, and starts preflop again. It may be used at any time in this sandbox.
+7. **Próxima mão** deals again using the settled stacks. Bankrupt seats sit
+   out. The suspicion bar shows the shared total and the next swap cost. When
+   the match ends, **Nova partida** restores the starting stacks and clears both
+   suspicion and the swap count.
 
-The betting controls deliberately act for **every current seat** for manual testing.
-There is no enemy AI choosing actions yet. Chips and bets are tracked but not paid
-out at showdown; side pots and persistent bankrolls remain future work.
+Enemy seats act automatically after 2–5 seconds. Click **Controle: IA** to take
+manual control of every seat. Click **Controle: manual** to resume the AI with a
+fresh delay. Reveals, swaps and new hands still use their existing buttons. The settlement
+line in each active panel shows the chips returned to that seat, including side pots.
 
 ## Reading the results
 
@@ -39,7 +42,7 @@ highest-equity player before the river. Folded players have zero equity.
 Equity includes split-pot shares: a guaranteed three-way tie has 33.3% equity, 0%
 outright wins, and 100% ties for each player. These values assume active players
 reach showdown; they do not predict future folds or discretionary swaps. Percentages
-are rounded to one decimal place. Preflop shows placeholders until sampling is added.
+are rounded to one decimal place. The spectator panel shows placeholders preflop. Enemies sample their own equity on every street.
 
 Calculations are exact from the flop onward and use all actual hands. Known reserved
 cards, discards, and folded hands are unavailable for future draws. With three active

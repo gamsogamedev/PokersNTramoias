@@ -20,10 +20,29 @@ public sealed class PokerEvaluatorTestScene : MonoBehaviour
     private readonly Button[] swapButtons = new Button[2];
     private Text callLabel, raiseLabel;
     private Button checkButton, raiseButton, foldButton;
-    private Text streetLabel;
+    private Text streetLabel, matchLabel;
+    private Image suspicionFill;
     private Button nextButton;
     private Text nextLabel;
     private Font font;
+    private bool manualSeats;
+    private Text modeLabel;
+    private readonly PokerEnemyTurns enemyTurns = new PokerEnemyTurns();
+    private bool CanActManually => Game != null && Game.ActingPlayerIndex >= 0
+        && (manualSeats || Game.ActingPlayerIndex == Game.ControlledPlayerIndex);
+
+    private void Update()
+    {
+        if (!manualSeats) enemyTurns.Tick(Game, Time.unscaledTimeAsDouble);
+    }
+    private void OnDisable() => enemyTurns.Cancel();
+
+    private void ToggleManualSeats()
+    {
+        manualSeats = !manualSeats;
+        enemyTurns.Cancel();
+        Refresh();
+    }
 
     private static readonly CultureInfo Portuguese = CultureInfo.GetCultureInfo("pt-BR");
 
@@ -46,16 +65,17 @@ public sealed class PokerEvaluatorTestScene : MonoBehaviour
             Game = new PokerGameState();
             Game.StateChanged += OnStateChanged;
         }
-        Game.StartNewHand();
+        if (Game.MatchOutcome != PokerMatchOutcome.InProgress) Game.StartNewMatch();
+        else if (Game.HandNumber == 0 || Game.IsHandOver) Game.StartNewHand();
     }
 
-    public void RevealNextCard() { if (Game.CanAdvanceStreet) Game.AdvanceStreet(); }
-    public void CheckOrCall() { if (Game.CanCheckOrCall) Game.CheckOrCall(Game.ActingPlayerIndex); }
+    public void RevealNextCard() { if (Game.IsHandOver) NewHand(); else if (Game.CanAdvanceStreet) Game.AdvanceStreet(); }
+    public void CheckOrCall() { if (CanActManually && Game.CanCheckOrCall) Game.CheckOrCall(Game.ActingPlayerIndex); }
     public void RaiseMinimum()
     {
-        if (Game.CanRaise) Game.BetOrRaiseTo(Game.ActingPlayerIndex, Game.CurrentBet + Game.MinimumRaise);
+        if (CanActManually && Game.CanRaise) Game.BetOrRaiseTo(Game.ActingPlayerIndex, Game.MinimumRaiseTarget);
     }
-    public void FoldCurrentPlayer() { if (Game.ActingPlayerIndex >= 0) Game.Fold(Game.ActingPlayerIndex); }
+    public void FoldCurrentPlayer() { if (CanActManually) Game.Fold(Game.ActingPlayerIndex); }
     public void SwapReservedCard(int index)
     {
         if (Game.CanSwap && index >= 0 && index < Game.CaptureSnapshot().ReservedCards.Count) Game.SwapCurrentStreetCard(index);
@@ -66,6 +86,8 @@ public sealed class PokerEvaluatorTestScene : MonoBehaviour
     private void Refresh()
     {
         PokerGameSnapshot state = Game.CaptureSnapshot();
+        PokerMatchDisplay.SetLevel(suspicionFill, state.Suspicion);
+        matchLabel.text = $"Suspeita {state.Suspicion}/100   /   Próxima troca +{state.SuccessfulSwapCount + 1}   {PokerMatchDisplay.Outcome(state.MatchOutcome)}";
         streetLabel.text = $"MÃO {state.HandNumber:00}   /   {StreetName(state.Street)}   /   {state.Board.Count} / 5";
         for (int i = 0; i < boardCards.Length; i++) ShowCard(boardCards[i], i < state.Board.Count ? state.Board[i] : null);
         for (int i = 0; i < reservedCards.Length; i++)
@@ -83,8 +105,8 @@ public sealed class PokerEvaluatorTestScene : MonoBehaviour
         {
             PokerSeatSnapshot player = state.Players[i];
             seatLabels[i].text = $"JOGADOR {i + 1} / {player.Chips} fichas / aposta {player.StreetContribution}";
-            for (int j = 0; j < 2; j++) ShowCard(holeCards[i, j], player.HoleCards[j]);
-            if (player.HasFolded) dead.AddRange(player.HoleCards);
+            for (int j = 0; j < 2; j++) ShowCard(holeCards[i, j], j < player.HoleCards.Count ? player.HoleCards[j] : null);
+            if (player.HasFolded || player.HoleCards.Count == 0) dead.AddRange(player.HoleCards);
             else
             {
                 activeHands.Add(player.HoleCards); activeIndices.Add(i);
@@ -94,7 +116,8 @@ public sealed class PokerEvaluatorTestScene : MonoBehaviour
                     if (values[i] > best) best = values[i];
                 }
             }
-            rankings[i].text = player.HasFolded ? "Foldou" : state.Board.Count < 3 ? "Aguardando o flop" : CategoryName(values[i].Category);
+            if (player.IsEliminated) seatLabels[i].text += " / FALIU";
+            rankings[i].text = player.HoleCards.Count == 0 ? "Fora da partida" : player.HasFolded ? "Foldou" : state.Board.Count < 3 ? "Aguardando o flop" : CategoryName(values[i].Category);
             equities[i].text = player.HasFolded ? "0,0% de equidade" : "Equidade: --";
             probabilities[i].text = player.HasFolded ? "Vitória 0,0% / Empate 0,0%" : "Cálculo após o flop";
         }
@@ -107,7 +130,8 @@ public sealed class PokerEvaluatorTestScene : MonoBehaviour
             int i = activeIndices[a];
             bool leads = activeHands.Count == 1 || (state.Board.Count >= 3 && values[i] == best);
             if (leads) leaders.Add(PlayerName(i));
-            if (leads) rankings[i].text += state.IsHandOver ? "\nVENCEDOR" : "\nNA LIDERANÇA";
+            if (state.Street == PokerStreet.Showdown || state.WinnerByFoldIndex >= 0) rankings[i].text += $"\nRecebeu {state.Payouts[i]}";
+            else if (leads && !state.IsHandOver) rankings[i].text += "\nNA LIDERANÇA";
             if (state.Players[i].IsAllIn) rankings[i].text += " / SEM FICHAS";
             if (equity != null)
             {
@@ -126,17 +150,19 @@ public sealed class PokerEvaluatorTestScene : MonoBehaviour
             playerPanels[i].color = leads ? LeaderPanel : Panel;
             rankings[i].color = leads ? Accent : Muted;
         }
-        nextButton.interactable = Game.CanAdvanceStreet;
-        nextLabel.text = state.IsHandOver ? "Mão encerrada" : state.Street == PokerStreet.Preflop ? "Flop"
+        nextButton.interactable = Game.CanAdvanceStreet || state.IsHandOver;
+        nextLabel.text = state.MatchOutcome != PokerMatchOutcome.InProgress ? "Nova partida" : state.IsHandOver ? "Próxima mão" : state.Street == PokerStreet.Preflop ? "Flop"
             : state.Street == PokerStreet.Flop ? "Turn" : state.Street == PokerStreet.Turn ? "River" : "Mostrar cartas";
         bool canAct = state.ActingPlayerIndex >= 0;
-        checkButton.interactable = state.CanCheckOrCall;
-        foldButton.interactable = canAct;
-        raiseButton.interactable = state.CanRaise;
+        modeLabel.text = manualSeats ? "Controle: manual" : "Controle: IA";
+        if (canAct) streetLabel.text += $"   /   Vez de {PlayerName(state.ActingPlayerIndex)}";
+        checkButton.interactable = CanActManually && state.CanCheckOrCall;
+        foldButton.interactable = CanActManually;
+        raiseButton.interactable = CanActManually && state.CanRaise;
         int call = canAct ? Game.AmountToCall(state.ActingPlayerIndex) : 0;
         callLabel.text = canAct && !state.CanCheckOrCall ? "Aguardando aposta"
             : call == 0 ? "Check" : $"Pagar {System.Math.Min(call, state.Players[state.ActingPlayerIndex].Chips)}";
-        raiseLabel.text = state.CurrentBet == 0 ? $"Apostar {state.MinimumRaise}" : $"Aumentar para {state.CurrentBet + state.MinimumRaise}";
+        raiseLabel.text = !state.CanRaise ? "Apostar" : state.CurrentBet == 0 ? $"Apostar {Game.MinimumRaiseTarget}" : $"Aumentar para {Game.MinimumRaiseTarget}";
 
     }
 
@@ -217,6 +243,8 @@ public sealed class PokerEvaluatorTestScene : MonoBehaviour
 
         //Label("Title", root, "PÔQUER / LABORATÓRIO DE TESTES", 0, 503, 1000, 48, 30, Accent);
         //Label("Subtitle", root, "Três mãos. Duas cartas reservadas. Apostas manuais para todos.", 0, 460, 1000, 32, 17, Muted);
+        suspicionFill = PokerMatchDisplay.CreateBar(root, 465, 400);
+        matchLabel = Label("Match", root, "", 0, 496, 1000, 38, 20, Accent);
         streetLabel = Label("Street", root, "", 0, 414, 1000, 32, 16, Accent);
         for (int i = 0; i < 5; i++) boardCards[i] = CardSlot(root, $"Board {i + 1}", (i - 2) * 116, 320, 96, 126);
         //Label("Flop label", root, "FLOP", -116, 238, 320, 24, 13, Muted);
@@ -244,9 +272,10 @@ public sealed class PokerEvaluatorTestScene : MonoBehaviour
         raiseButton = MakeButton(root, "Raise", "Aumentar o mínimo", 0, -405, 250, RaiseMinimum);
         raiseLabel = raiseButton.GetComponentInChildren<Text>();
         foldButton = MakeButton(root, "Fold", "Fold", 290, -405, 220, FoldCurrentPlayer);
-        nextButton = MakeButton(root, "Next card", "", -145, -477, 270, RevealNextCard);
+        nextButton = MakeButton(root, "Next card", "", 0, -477, 270, RevealNextCard);
         nextLabel = nextButton.GetComponentInChildren<Text>();
-        MakeButton(root, "New hand", "Nova mão aleatória", 155, -477, 270, NewHand);
+        modeLabel = MakeButton(root, "Enemy control", "", 320, -477, 250, ToggleManualSeats).GetComponentInChildren<Text>();
+
         
         var eventSystem = new GameObject("Sandbox EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
         eventSystem.transform.SetParent(transform, false);

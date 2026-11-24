@@ -22,7 +22,8 @@ static class PokerGameStateChecks
             Check(cards.Length + s.DeckCount == 52, "All 52 cards accounted for");
             Check(cards.Select(Id).Distinct().Count() == cards.Length, "Card locations remain disjoint");
             Check(s.Players.Sum(p => p.Chips) + s.Pot == s.Players.Count * 1000, "Chips conserved");
-            Check(s.Players.Sum(p => p.TotalContribution) == s.Pot, "Pot tracks every contribution");
+            int committed = s.Street == PokerStreet.Showdown || s.WinnerByFoldIndex >= 0 ? s.Payouts.Sum() : s.Pot;
+            Check(s.Players.Sum(p => p.TotalContribution) == committed, "Pot tracks every contribution");
         }
         void CheckThrough(PokerGameState game)
         {
@@ -30,7 +31,7 @@ static class PokerGameStateChecks
             while (game.ActingPlayerIndex >= 0)
             {
                 if (++actions > 10) throw new Exception("Betting did not finish");
-                if (!game.CanCheckOrCall) game.BetOrRaiseTo(game.ActingPlayerIndex, game.CurrentBet + game.MinimumRaise);
+                if (!game.CanCheckOrCall) game.BetOrRaiseTo(game.ActingPlayerIndex, game.MinimumRaiseTarget);
                 else game.CheckOrCall(game.ActingPlayerIndex);
             }
         }
@@ -71,6 +72,7 @@ static class PokerGameStateChecks
         Reject<ArgumentOutOfRangeException>(() => game.SwapCurrentStreetCard(2), "Invalid reserve index rejected");
         game.SwapCurrentStreetCard(0);
         var swapped = game.CaptureSnapshot();
+        Check(swapped.Suspicion == 1 && swapped.SuccessfulSwapCount == 1, "Rejected swaps cost nothing");
         Check(Id(swapped.Board[3]) == Id(turn.ReservedCards[0]), "Reserved card becomes turn");
         Check(Id(swapped.Discards[0]) == Id(turn.Board[3]), "Old turn is discarded");
         Check(swapped.ReservedCards.Count == 1 && swapped.DeckCount == turn.DeckCount, "Swap consumes reserve without drawing");
@@ -82,6 +84,7 @@ static class PokerGameStateChecks
         CheckThrough(game); game.AdvanceStreet();
         Check(game.CanCheckOrCall, "River permits checking without an opening bet");
         game.SwapCurrentStreetCard(0);
+        Check(game.Suspicion == 3 && game.SuccessfulSwapCount == 2, "Turn and river cost 1 + 2");
         Check(game.CaptureSnapshot().ReservedCards.Count == 0 && game.CaptureSnapshot().Discards.Count == 2, "Consume second reserve on river");
         Invariants(game);
         CheckThrough(game); game.AdvanceStreet();
@@ -89,6 +92,7 @@ static class PokerGameStateChecks
         Reject<InvalidOperationException>(game.AdvanceStreet, "No sixth community card");
         Check(events.Select(e => e.Version).SequenceEqual(Enumerable.Range(1, events.Count)), "Monotonic event versions");
 
+        var settled = game.CaptureSnapshot();
         game.StartNewHand();
         Check(game.HandNumber == 2 && game.CaptureSnapshot().Discards.Count == 0, "New hand clears discards");
         game.BetOrRaiseTo(0, 20);
@@ -100,7 +104,7 @@ static class PokerGameStateChecks
         game.CheckOrCall(0); game.Fold(1);
         Check(game.BettingRoundComplete && game.Pot == 140, "Call/raise/fold pot accounting");
         var betting = game.CaptureSnapshot();
-        Check(betting.Players[0].Chips == 940 && betting.Players[1].Chips == 980 && betting.Players[2].Chips == 940, "Chip balances");
+        Check(betting.Players.Select(p => p.Chips).SequenceEqual(settled.Players.Select(p => p.Chips).Zip(new[] {60,20,60}, (chips, bet) => chips - bet)), "Chip balances");
         game.AdvanceStreet();
         var newStreet = game.CaptureSnapshot();
         Check(newStreet.CurrentBet == 0 && newStreet.Players.All(p => p.StreetContribution == 0) && newStreet.Pot == 140,
@@ -116,7 +120,7 @@ static class PokerGameStateChecks
         allIn.StartNewHand(); allIn.BetOrRaiseTo(0, 20); allIn.CheckOrCall(1); allIn.CheckOrCall(2);
         Check(allIn.BettingRoundComplete && allIn.CaptureSnapshot().Players.All(p => p.IsAllIn), "All-in seats need no more actions");
         while (allIn.CanAdvanceStreet) allIn.AdvanceStreet();
-        Check(allIn.Street == PokerStreet.Showdown && allIn.Pot == 60, "All-in runout reaches showdown");
+        Check(allIn.Street == PokerStreet.Showdown && allIn.Pot == 0 && allIn.CaptureSnapshot().Payouts.Sum() == 60, "All-in runout reaches showdown");
 
         // A check does not remove the obligation to respond to a later opening bet/raise.
         var reopened = new PokerGameState(random: new Random(17));
@@ -148,7 +152,7 @@ static class PokerGameStateChecks
         var deals = new HashSet<string>();
         for (int hand = 0; hand < 100; hand++)
         {
-            game.StartNewHand();
+            if (game.MatchOutcome == PokerMatchOutcome.InProgress) game.StartNewHand(); else game.StartNewMatch();
             deals.Add(string.Join(" ", game.CaptureSnapshot().Players.SelectMany(p => p.HoleCards).Select(Id)));
             while (!game.IsHandOver)
             {
@@ -158,12 +162,14 @@ static class PokerGameStateChecks
                     game.SwapCurrentStreetCard(0);
                     Invariants(game);
                 }
+                if (game.IsHandOver) break;
                 CheckThrough(game);
                 game.AdvanceStreet();
             }
             Invariants(game);
         }
         Check(deals.Count == 100, "Fresh hands reshuffle");
+        game = new PokerGameState(random: new Random(12));
         game.StartNewHand(); CheckThrough(game); game.AdvanceStreet(); CheckThrough(game); game.AdvanceStreet();
         game.BetOrRaiseTo(0, 20);
         Reject<InvalidOperationException>(() => game.SwapCurrentStreetCard(0), "Betting closes swap window");

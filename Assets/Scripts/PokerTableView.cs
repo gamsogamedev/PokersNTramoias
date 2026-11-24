@@ -108,27 +108,16 @@ public class PokerTableView : MonoBehaviour
     private void UpdateResult(PokerGameSnapshot state)
     {
         if (resultText == null) return;
-        if (!state.IsHandOver) { resultText.text = ""; return; }
-
-        if (state.WinnerByFoldIndex >= 0)
-        {
-            resultText.text = $"{state.Players[state.WinnerByFoldIndex].Name} vence (todos desistiram) | Pote: {state.Pot}";
-            return;
-        }
-
-        PokerHandValue best = default;
-        bool first = true;
-        var winners = new List<int>();
+        var lines = new List<string>();
+        if (state.MatchOutcome != PokerMatchOutcome.InProgress)
+            lines.Add(PokerMatchDisplay.Outcome(state.MatchOutcome));
         for (int i = 0; i < state.Players.Count; i++)
         {
-            if (state.Players[i].HasFolded) continue;
-            PokerHandValue value = PokerHandEvaluator.EvaluateHoldem(state.Players[i].HoleCards, state.Board);
-            if (first || value > best) { best = value; winners.Clear(); winners.Add(i); first = false; }
-            else if (value == best) winners.Add(i);
+            if (state.Players[i].IsEliminated) lines.Add($"J{i + 1} faliu");
+            if ((state.WinnerByFoldIndex >= 0 || state.Street == PokerStreet.Showdown) && state.Payouts[i] > 0)
+                lines.Add($"J{i + 1} recebeu {state.Payouts[i]}");
         }
-
-        var names = new List<string>();
-        foreach (int w in winners) names.Add(state.Players[w].Name);
-        resultText.text = $"Showdown: {string.Join(" e ", names)} ({best.Category}) | Pote: {state.Pot}";
+        if (state.WinnerByFoldIndex >= 0) lines.Insert(0, $"J{state.WinnerByFoldIndex + 1} venceu por desistência");
+        resultText.text = string.Join("  /  ", lines);
     }
 }
