@@ -2,17 +2,19 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="b71744e3-0485-4a91-af6f-02494d79c580" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/Assets/Readme.asset" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scenes/NagaTeste.unity" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/Scenes/NagaTeste.unity" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scenes/SampleScene.unity" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Art/BGCards.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Art/Bg.png" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/Art/Bg.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Art/CardSpriteLibrary.asset" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Art/Cartas/Cartas.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Editor/CardSpriteAutoImporter.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Prefabs/Cartas.prefab" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Scenes/NagaTeste.unity" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Scripts/BarDebugTester.cs" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/Assets/Scripts/DealerManager.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/Scripts/DealerManager.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/Deck.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/Scripts/Deck.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/TutorialInfo/Icons/URP.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/TutorialInfo/Layout.wlt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/TutorialInfo/Scripts/Editor/ReadmeEditor.cs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/TutorialInfo/Scripts/Readme.cs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Packages/manifest.json" beforeDir="false" afterPath="$PROJECT_DIR$/Packages/manifest.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Packages/packages-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/Packages/packages-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Scripts/MoneyTracker.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Scripts/SmoothBar.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Scripts/SuspicionSystem.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/PokersNTramoias.slnx" beforeDir="false" afterPath="$PROJECT_DIR$/PokersNTramoias.slnx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -101,6 +103,7 @@
       <workItem from="1792461686015" duration="2035000" />
       <workItem from="1794091176611" duration="9000" />
       <workItem from="1794874077518" duration="8132000" />
+      <workItem from="1795472286698" duration="1013000" />
     </task>
     <servers />
   </component>

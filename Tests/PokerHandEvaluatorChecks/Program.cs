@@ -176,6 +176,8 @@ Reject<ArgumentException>(() => PokerEquityCalculator.Calculate(known, flopBoard
 
 // Every possible five-card hand: independently known standard-deck category totals.
 assertions += PokerGameStateChecks.Run();
+assertions += PokerMatchChecks.Run();
+assertions += PokerEnemyChecks.Run();
 var timer = Stopwatch.StartNew();
 var deck = (from suit in Enumerable.Range(0, 4)
             from rank in Enumerable.Range(2, 13)

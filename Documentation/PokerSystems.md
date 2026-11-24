@@ -4,9 +4,8 @@
 
 The player controls their own betting actions and receives two extra random cards
 that can replace the turn or river. Each swap recalculates the participants' equity.
-Enemies use poker estimates to choose legal betting actions and accumulate suspicion
-across suspicious events. Reaching 100 suspicion triggers game over. Decide whether
-that threshold applies to any single enemy or a shared meter before implementing it.
+The table shares one suspicion meter across all hands of a match. Enemies bet automatically in both playable views. The evaluator scene includes a
+manual-seat toggle for testing.
 
 Implemented prototype swap rules: consume one reserved card to replace the newly
 revealed turn or river, once on each street, before any betting action on that street.
@@ -31,17 +30,17 @@ of the evaluator, and can be changed as the game design develops.
 3. **Equity service (postflop implemented):** `PokerEquityCalculator.Calculate` copies
    known hands, board, and optional dead cards and returns immutable per-player
    win/tie probabilities and equity. It exactly enumerates remaining boards on the
-   flop, turn, and river and is connected to the test scene. Preflop Monte Carlo,
-   hidden-hand ranges, and asynchronous numerical snapshots remain future work.
+   flop, turn, and river and is connected to the test scene. Enemy decisions use a separate sampled estimate from preflop through river.
+   Spectator preflop estimates and asynchronous numerical snapshots remain future work.
    Never inspect the actual future
    deck order unless intentionally modeling a known rigged deck. Evaluate active
    players only; model folded/dead cards according to the calculation's knowledge.
 4. **Swap events and history (events implemented; history pending):** calculate the before and after positions, store the
    event and snapshots, then update the UI. Recalculate on board reveals, swaps, and
    folds; invalidate results when the relevant state or assumed ranges change.
-5. **Suspicion:** each enemy reacts to evidence available to it and remembers patterns
-   across hands. Track suspicion independently from the poker mathematics.
-6. **Enemy betting:** consume the enemy's equity estimate, legal actions, pot, amount
+5. **Suspicion and settlement (implemented)**. Successful swaps and losing enemy
+   hands score against the same meter. Stacks carry forward after payouts.
+6. **Enemy betting (implemented):** consume the enemy's equity estimate, legal actions, pot, amount
    to call, stack, position, betting history, and personality. Player actions remain
    under player control.
 
@@ -75,9 +74,6 @@ will require separate eligibility and payout calculations.
 - **Enemy betting view:** own hole cards, public board, observable betting, and estimated
   opponent ranges. Do not remove secret cards by consulting authoritative state.
   Unknown reserved, folded, or discarded cards remain unobserved possibilities.
-- **Suspicion view:** observations and memory belonging to that enemy. A showdown
-  can reveal stronger evidence than was available during betting.
-
 For three players with known hole cards and no extra reserved/dead cards, the flop
 has C(43,2)=903 possible remaining boards and the turn has 42 rivers. Two known
 reserved cards reduce those counts to C(41,2)=820 and 40, before further discards.
@@ -101,24 +97,50 @@ enemy observation inputs.
 
 Compare original and replacement cards at the **same street** when measuring a swap's
 effect. Comparing pre-turn with post-swap turn also measures the ordinary reveal.
-Equity delta alone does not establish a cooler or cheating: favorable runouts happen
-naturally. Suggested suspicion model:
 
-`increase = observable event severity * enemy sensitivity * repeated-pattern multiplier`
+## Match rules
 
-Use unlikely revealed outcomes, repeated losses with strong hands, suspicious timing,
-or a noticed manipulation as evidence. True equity gain can separately tune cheat
-severity as a deliberate difficulty mechanic. Decide caps, decay, threshold ownership,
-and whether naturally occurring coolers raise suspicion before wiring game over.
+One successful swap adds its sequence number across the match. The first costs 1,
+the next 2. Suspicion and the sequence persist in memory until a new match.
+
+| Losing enemy at showdown | Trips | Straight | Flush | Full house | Quads | Straight flush |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Suspicion added | 5 | 6 | 7 | 8 | 9 | 10 |
+
+Score every qualifying enemy once, including losses to another enemy on a natural
+board. Folded seats and winners of any contested pot share score zero. A lone
+contributor receives a refund and can still score for a losing hand.
+
+Fold wins pay immediately. At showdown, divide contributions into main and side
+pots by contribution level. Folded chips fund each applicable layer. Eligible
+live winners split each layer evenly, with odd chips awarded in ascending seat
+order. Bankrupt seats keep their indices and sit out subsequent deals.
+
+A swap reaching 100 ends the match immediately. After showdown payouts and all
+coolers, resolve enemy bankruptcy victory first, reaching 100 suspicion second,
+and controlled-player bankruptcy third. The meter caps at 100.
 
 ## Enemy betting
 
-For a simple call, required equity is approximately
-`call amount / (pot before call + call amount)`. Account for future betting, multiple
-opponents, and side pots as the betting system develops. A check is legal when nothing
-must be called. A raise needs legal sizing, stack constraints, and an estimate of fold
-probability, rather than a single equity threshold. Bluffing and risk preferences
-belong in the betting policy, not the evaluator.
+Each enemy turn draws a fresh 2–5 second delay. During that delay, the sampler
+draws uniformly random live opponent hands and completes the visible board without
+replacement. All-in opponents participate and ties split the showdown share. Work
+runs in roughly 1 ms slices per frame, up to 10,000 outcomes. At the deadline the
+policy uses the completed estimate. The same seat reuses its estimate on a re-raise
+if its cards, board and live opponents still match. A swap restarts a pending turn.
+
+The hand ceiling in chips is the stack at the deal multiplied by
+`min(1, equity² × live player count × risk)`, rounded down. Risk combines a
+match-long seat preference with a small adjustment sampled once per hand. Subtract
+all chips already committed, including earlier streets, to find the remaining
+budget. Lower equity can leave an enemy able only to check or fold.
+
+`PokerEnemyPolicy` weights legal actions using equity, the payable call divided
+by the eligible pot after calling, aggression, seat position, and raises on the
+street. The bluff weight falls with more opponents and betting pressure, and
+vanishes against an all-in opponent. Raises may use the legal minimum, half the
+pot after calling, or the full pot after calling, subject to stack and budget.
+The random source for enemy play is independent of the shuffled game deck.
 
 ## OMPEval and performance
 
