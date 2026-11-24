@@ -62,8 +62,13 @@ public static class PokerHandEvaluator
             seen |= bit;
         }
 
+        return EvaluateDistinct(cards, new int[15]);
+    }
+
+    // The sampler deals distinct cards and reuses its own rank-count buffer.
+    internal static PokerHandValue EvaluateDistinct(IReadOnlyList<Card> cards, int[] counts)
+    {
         int best = 0;
-        var counts = new int[15];
         // At most 21 combinations. Hold'em permits using zero, one, or two hole cards.
         for (int a = 0; a < cards.Count - 4; a++)
         for (int b = a + 1; b < cards.Count - 3; b++)

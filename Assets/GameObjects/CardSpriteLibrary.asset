@@ -1,0 +1,172 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: da180369665a17c4e9657506c247a0cf, type: 3}
+  m_Name: CardSpriteLibrary
+  m_EditorClassIdentifier: Assembly-CSharp::CardSpriteLibrary
+  cardBackSprite: {fileID: 0}
+  entries:
+  - suit: 0
+    rank: 14
+    sprite: {fileID: 1635625112, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 0
+    rank: 2
+    sprite: {fileID: 95343926, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 0
+    rank: 3
+    sprite: {fileID: -1544637637, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 0
+    rank: 4
+    sprite: {fileID: 959168701, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 0
+    rank: 5
+    sprite: {fileID: -1473039459, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 0
+    rank: 6
+    sprite: {fileID: -92899124, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 0
+    rank: 7
+    sprite: {fileID: 1057754357, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 0
+    rank: 8
+    sprite: {fileID: -622921280, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 0
+    rank: 9
+    sprite: {fileID: -701427883, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 0
+    rank: 10
+    sprite: {fileID: 1634478346, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 0
+    rank: 11
+    sprite: {fileID: -434426259, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 0
+    rank: 12
+    sprite: {fileID: 1342092184, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 0
+    rank: 13
+    sprite: {fileID: 1974608077, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 3
+    rank: 14
+    sprite: {fileID: -551047619, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 3
+    rank: 2
+    sprite: {fileID: 508591633, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 3
+    rank: 3
+    sprite: {fileID: -373907808, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 3
+    rank: 4
+    sprite: {fileID: -114609430, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 3
+    rank: 5
+    sprite: {fileID: -1107692001, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 3
+    rank: 6
+    sprite: {fileID: -1466198971, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 3
+    rank: 7
+    sprite: {fileID: -2110016327, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 3
+    rank: 8
+    sprite: {fileID: 1045407120, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 3
+    rank: 9
+    sprite: {fileID: 1516019458, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 3
+    rank: 10
+    sprite: {fileID: 97248319, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 3
+    rank: 11
+    sprite: {fileID: -1501841415, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 3
+    rank: 12
+    sprite: {fileID: 1804325333, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 3
+    rank: 13
+    sprite: {fileID: -1222253322, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 1
+    rank: 14
+    sprite: {fileID: 51036808, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 1
+    rank: 2
+    sprite: {fileID: 1404896516, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 1
+    rank: 3
+    sprite: {fileID: -212883650, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 1
+    rank: 4
+    sprite: {fileID: -1171742685, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 1
+    rank: 5
+    sprite: {fileID: 1598487018, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 1
+    rank: 6
+    sprite: {fileID: -1706212961, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 1
+    rank: 7
+    sprite: {fileID: 1186012056, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 1
+    rank: 8
+    sprite: {fileID: -1778825111, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 1
+    rank: 9
+    sprite: {fileID: 894592738, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 1
+    rank: 10
+    sprite: {fileID: 1044519493, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 1
+    rank: 11
+    sprite: {fileID: -1127991029, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 1
+    rank: 12
+    sprite: {fileID: -1914728190, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 1
+    rank: 13
+    sprite: {fileID: 791908560, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 2
+    rank: 14
+    sprite: {fileID: 1862825502, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 2
+    rank: 2
+    sprite: {fileID: -1547841420, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 2
+    rank: 3
+    sprite: {fileID: 288474784, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 2
+    rank: 4
+    sprite: {fileID: 596024779, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 2
+    rank: 5
+    sprite: {fileID: -1104193951, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 2
+    rank: 6
+    sprite: {fileID: 2080521010, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 2
+    rank: 7
+    sprite: {fileID: 1775790193, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 2
+    rank: 8
+    sprite: {fileID: -2117949675, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 2
+    rank: 9
+    sprite: {fileID: 333349087, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 2
+    rank: 10
+    sprite: {fileID: -220727991, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 2
+    rank: 11
+    sprite: {fileID: 43407441, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 2
+    rank: 12
+    sprite: {fileID: 890099929, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}
+  - suit: 2
+    rank: 13
+    sprite: {fileID: 1863895787, guid: c9b84d7d3052384428c7ff9676fec883, type: 3}

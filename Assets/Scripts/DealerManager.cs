@@ -1,10 +1,7 @@
 using System;
 using TMPro;
 using UnityEngine;
-<<<<<<< Updated upstream
 using UnityEngine.UI;
-=======
->>>>>>> Stashed changes
 
 /// <summary>Unity adapter for the shared poker state. UI and enemy policies submit actions here.</summary>
 [DisallowMultipleComponent]
@@ -17,7 +14,6 @@ public class DealerManager : MonoBehaviour
     [Min(1)] public int minimumBet = 20;
     public bool showAllHoleCards = true;
 
-<<<<<<< Updated upstream
     [Header("Optional TextMeshPro UI")]
     public TMP_Text[] textosMaosJogadores;
     public TMP_Text textoMesa;
@@ -25,18 +21,6 @@ public class DealerManager : MonoBehaviour
     public TMP_Text textoReservas;
     public TMP_Text textoDescartes;
     public TMP_Text textoApostas;
-=======
-    [Header("Visual das cartas")]
-    public CardSpriteLibrary spriteLibrary;
-    public GameObject cardVisualPrefab; // prefab com Image + componente CardVisual
-
-    [Header("Containers de UI (RectTransform vazios, um por jogador)")]
-    public RectTransform[] containersMaosJogadores;
-    public RectTransform containerMesa;
-
-    [Header("Sistemas (opcional)")]
-    public MoneyTracker moneyTracker;
->>>>>>> Stashed changes
 
     [Header("Optional buttons (listeners assigned at startup)")]
     public Button nextStreetButton;
@@ -49,8 +33,16 @@ public class DealerManager : MonoBehaviour
     public event Action<PokerGameEvent> StateChanged;
     private UnityEngine.Events.UnityAction[] swapActions;
 
+    private Image suspicionFill;
+    private readonly PokerEnemyTurns enemyTurns = new PokerEnemyTurns();
+    private bool PlayerCanAct => Game != null && Game.ActingPlayerIndex == Game.ControlledPlayerIndex;
+
+    private void Update() => enemyTurns.Tick(Game, Time.unscaledTimeAsDouble);
+    private void OnDisable() => enemyTurns.Cancel();
+
     private void Start()
     {
+        if (textoStreet != null) suspicionFill = PokerMatchDisplay.CreateBar(textoStreet.transform, -35, 360);
         if (nextStreetButton != null) nextStreetButton.onClick.AddListener(AdvanceStreet);
         if (checkCallButton != null) checkCallButton.onClick.AddListener(CheckOrCall);
         if (raiseButton != null) raiseButton.onClick.AddListener(RaiseMinimum);
@@ -65,83 +57,42 @@ public class DealerManager : MonoBehaviour
                 if (swapButtons[i] != null) swapButtons[i].onClick.AddListener(swapActions[i]);
             }
         }
-<<<<<<< Updated upstream
         if (Game == null) PlayRound();
-=======
-
-        if (moneyTracker != null)
-            moneyTracker.Initialize(players);
->>>>>>> Stashed changes
     }
 
-    /// <summary>Starts a fresh preflop hand. Stacks reset until settlement is implemented.</summary>
+    /// <summary>Deals the next hand or begins a new match after the outcome.</summary>
     [ContextMenu("Poker/New hand")]
     public void PlayRound()
     {
-<<<<<<< Updated upstream
         if (Game == null)
         {
             Game = new PokerGameState(numeroDeJogadores, controlledPlayerIndex, startingChips, minimumBet);
             Game.StateChanged += OnStateChanged;
         }
-        Game.StartNewHand();
-=======
-        deck.Reset();
-        deck.Shuffle();
-        table.Clear();
-        foreach (var p in players) p.ClearHand();
-
-        LimparVisuais();
-
-        // Distribui cartas pros jogadores (uma de cada vez, como numa mesa real)
-        for (int rodada = 0; rodada < cartasPorJogador; rodada++)
-        {
-            for (int i = 0; i < players.Count; i++)
-            {
-                Card carta = DealCard();
-                // Por enquanto true só pra debug; no jogo real, cartas do oponente ficam ocultas (false)
-                carta.faceUp = true;
-                players[i].ReceiveCard(carta);
-
-                if (i < containersMaosJogadores.Length)
-                    CriarCartaVisual(carta, containersMaosJogadores[i]);
-            }
-        }
-
-        // Distribui cartas pra mesa
-        for (int i = 0; i < cartasNaMesa; i++)
-        {
-            Card carta = DealCard();
-            carta.faceUp = true;
-            table.ReceiveCard(carta);
-            CriarCartaVisual(carta, containerMesa);
-        }
-
-        LogEstadoAtual();
->>>>>>> Stashed changes
+        if (Game.MatchOutcome != PokerMatchOutcome.InProgress) Game.StartNewMatch();
+        else if (Game.HandNumber == 0 || Game.IsHandOver) Game.StartNewHand();
     }
 
     [ContextMenu("Poker/Next street")]
-    public void AdvanceStreet() { if (Game != null && Game.CanAdvanceStreet) Game.AdvanceStreet(); }
+    public void AdvanceStreet() { if (Game == null) return; if (Game.IsHandOver) PlayRound(); else if (Game.CanAdvanceStreet) Game.AdvanceStreet(); }
 
     [ContextMenu("Poker/Check or call current player")]
     public void CheckOrCall()
     {
-        if (Game != null && Game.CanCheckOrCall) Game.CheckOrCall(Game.ActingPlayerIndex);
+        if (PlayerCanAct && Game.CanCheckOrCall) Game.CheckOrCall(Game.ActingPlayerIndex);
     }
 
-<<<<<<< Updated upstream
     [ContextMenu("Poker/Raise minimum for current player")]
     public void RaiseMinimum()
     {
-        if (Game != null && Game.CanRaise)
-            Game.BetOrRaiseTo(Game.ActingPlayerIndex, Game.CurrentBet + Game.MinimumRaise);
+        if (PlayerCanAct && Game.CanRaise)
+            Game.BetOrRaiseTo(Game.ActingPlayerIndex, Game.MinimumRaiseTarget);
     }
 
     [ContextMenu("Poker/Fold current player")]
     public void FoldCurrentPlayer()
     {
-        if (Game != null && Game.ActingPlayerIndex >= 0) Game.Fold(Game.ActingPlayerIndex);
+        if (PlayerCanAct) Game.Fold(Game.ActingPlayerIndex);
     }
 
     public void SwapReservedCard(int index)
@@ -168,61 +119,40 @@ public class DealerManager : MonoBehaviour
                 bool visible = showAllHoleCards || i == state.ControlledPlayerIndex;
                 string hand = visible ? CardsText(player.HoleCards) : "?? ??";
                 textosMaosJogadores[i].text = $"{player.Name}: {hand} | {player.Chips} chips"
-                    + (player.HasFolded ? " | FOLDED" : player.IsAllIn ? " | ALL IN" : "");
+                    + (player.IsEliminated ? " | FALIDO" : player.HasFolded ? " | FOLDED" : player.IsAllIn ? " | ALL IN" : "");
             }
         if (textoMesa != null) textoMesa.text = $"Mesa: {CardsText(state.Board)}";
         if (textoStreet != null) textoStreet.text = $"Hand {state.HandNumber} / {state.Street}"
-            + (state.IsHandOver ? " / complete" : "");
+            + $" / Suspeita {state.Suspicion}/100";
+        if (suspicionFill != null) PokerMatchDisplay.SetLevel(suspicionFill, state.Suspicion);
         if (textoReservas != null) textoReservas.text = $"Reserved: {CardsText(state.ReservedCards)}";
         if (textoDescartes != null) textoDescartes.text = $"Discards: {CardsText(state.Discards)}";
         if (textoApostas != null) textoApostas.text = $"Pot: {state.Pot} | Bet: {state.CurrentBet} | "
             + (state.ActingPlayerIndex < 0 ? "Betting complete" : $"{state.Players[state.ActingPlayerIndex].Name} to act");
-        if (nextStreetButton != null) nextStreetButton.interactable = Game.CanAdvanceStreet;
-        if (checkCallButton != null) checkCallButton.interactable = state.CanCheckOrCall;
-        if (raiseButton != null) raiseButton.interactable = state.CanRaise;
-        if (foldButton != null) foldButton.interactable = state.ActingPlayerIndex >= 0;
+        if (nextStreetButton != null)
+        {
+            nextStreetButton.interactable = Game.CanAdvanceStreet || state.IsHandOver;
+            SetLabel(nextStreetButton, state.MatchOutcome != PokerMatchOutcome.InProgress ? "Nova partida"
+                : state.IsHandOver ? "Próxima mão" : "Avançar");
+        }
+        if (state.CanRaise) SetLabel(raiseButton, $"Apostar {Game.MinimumRaiseTarget}");
+        if (checkCallButton != null) checkCallButton.interactable = PlayerCanAct && state.CanCheckOrCall;
+        if (raiseButton != null) raiseButton.interactable = PlayerCanAct && state.CanRaise;
+        if (foldButton != null) foldButton.interactable = PlayerCanAct;
         if (swapButtons != null)
             for (int i = 0; i < swapButtons.Length; i++)
-                if (swapButtons[i] != null) swapButtons[i].interactable = state.CanSwap && i < state.ReservedCards.Count;
-=======
-    /// <summary>
-    /// Instancia o prefab visual de uma carta dentro de um container (mão do
-    /// jogador ou mesa) e configura sua imagem via CardVisual.
-    /// </summary>
-    private void CriarCartaVisual(Card carta, RectTransform container)
-    {
-        if (cardVisualPrefab == null || container == null) return;
-
-        GameObject cartaObj = Instantiate(cardVisualPrefab, container);
-        CardVisual visual = cartaObj.GetComponent<CardVisual>();
-        if (visual != null)
-        {
-            visual.Setup(carta, spriteLibrary);
-        }
-        else
-        {
-            Debug.LogWarning("cardVisualPrefab não tem o componente CardVisual anexado.");
-        }
+                if (swapButtons[i] != null)
+                {
+                    swapButtons[i].interactable = state.CanSwap && i < state.ReservedCards.Count;
+                    SetLabel(swapButtons[i], $"Trocar {i + 1} (+{state.SuccessfulSwapCount + 1})");
+                }
     }
 
-    /// <summary>
-    /// Remove todas as cartas visuais instanciadas antes de uma nova rodada.
-    /// </summary>
-    private void LimparVisuais()
+    private static void SetLabel(Button button, string value)
     {
-        foreach (var container in containersMaosJogadores)
-        {
-            if (container == null) continue;
-            for (int i = container.childCount - 1; i >= 0; i--)
-                Destroy(container.GetChild(i).gameObject);
-        }
-
-        if (containerMesa != null)
-        {
-            for (int i = containerMesa.childCount - 1; i >= 0; i--)
-                Destroy(containerMesa.GetChild(i).gameObject);
-        }
->>>>>>> Stashed changes
+        if (button == null) return;
+        TMP_Text label = button.GetComponentInChildren<TMP_Text>();
+        if (label != null) label.text = value;
     }
 
     private static string CardsText(System.Collections.Generic.IReadOnlyList<Card> cards)
@@ -242,5 +172,43 @@ public class DealerManager : MonoBehaviour
         if (swapActions != null && swapButtons != null)
             for (int i = 0; i < Math.Min(swapActions.Length, swapButtons.Length); i++)
                 if (swapButtons[i] != null) swapButtons[i].onClick.RemoveListener(swapActions[i]);
+    }
+}
+
+internal static class PokerMatchDisplay
+{
+    public static string Outcome(PokerMatchOutcome outcome)
+    {
+        switch (outcome)
+        {
+            case PokerMatchOutcome.PlayerWon: return "Você venceu a partida";
+            case PokerMatchOutcome.Caught: return "Trapaça descoberta";
+            case PokerMatchOutcome.PlayerBankrupt: return "Você faliu";
+            default: return "";
+        }
+    }
+
+    public static Image CreateBar(Transform parent, float y, float width)
+    {
+        Image track = new GameObject("Suspeita", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+        track.transform.SetParent(parent, false);
+        track.rectTransform.anchoredPosition = new Vector2(0, y);
+        track.rectTransform.sizeDelta = new Vector2(width, 10);
+        track.color = new Color32(64, 73, 72, 255);
+        track.raycastTarget = false;
+
+        Image fill = new GameObject("Nivel", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+        fill.transform.SetParent(track.transform, false);
+        fill.rectTransform.anchorMin = Vector2.zero;
+        fill.rectTransform.anchorMax = Vector2.up;
+        fill.rectTransform.sizeDelta = Vector2.zero;
+        fill.color = new Color32(246, 164, 68, 255);
+        fill.raycastTarget = false;
+        return fill;
+    }
+
+    public static void SetLevel(Image fill, int suspicion)
+    {
+        fill.rectTransform.anchorMax = new Vector2(suspicion / 100f, 1);
     }
 }

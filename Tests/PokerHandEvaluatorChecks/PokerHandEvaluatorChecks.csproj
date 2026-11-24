@@ -8,6 +8,7 @@
   <ItemGroup>
     <Compile Include="../../Assets/Scripts/Card.cs" Link="Card.cs" />
     <Compile Include="../../Assets/Scripts/Deck.cs" Link="Deck.cs" />
+    <Compile Include="../../Assets/Scripts/Poker/PokerEnemy*.cs" />
     <Compile Include="../../Assets/Scripts/Poker/PokerGameState.cs" Link="PokerGameState.cs" />
     <Compile Include="../../Assets/Scripts/Poker/PokerHandEvaluator.cs" Link="PokerHandEvaluator.cs" />
     <Compile Include="../../Assets/Scripts/Poker/PokerEquityCalculator.cs" Link="PokerEquityCalculator.cs" />

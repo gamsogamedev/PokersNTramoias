@@ -7,7 +7,7 @@ remain available for older code; they are not authoritative copies of the new st
 
 ## Progression
 
-`StartNewHand()` shuffles 52 cards, deals two hole cards per seat, reserves two more
+`StartNewHand()` shuffles 52 cards, deals two hole cards per funded seat, reserves two more
 cards for the controlled player, and starts preflop with an empty board. The default
 table has three players, 1,000 chips each, player zero controlled, and a 20-chip
 minimum opening bet. Constructor parameters allow two to ten players and a seeded
@@ -67,7 +67,45 @@ events additionally carry board index, reserved index, replacement, and replaced
 card copies. Invalid actions throw before mutation and do not emit events.
 
 These events are the extension point for step four's before/after equity history.
-The state model does not yet persist history, calculate suspicion, or choose actions.
+Snapshots include shared suspicion, successful swap count, match outcome, elimination flags and the most recent settled payouts. Scoring and payouts finish before the action event reaches listeners.
+
+## Match scoring and payouts
+
+Each match starts at 0/100 suspicion. Successful swap number *n* adds *n*
+points. Two swaps cost 3 total. One swap per hand over ten hands costs 55.
+Both counters carry forward without decay. A swap reaching 100 ends play on
+that street, with the unfinished pot still on the table.
+
+At showdown, score each losing enemy once, even on an untouched board or when
+another enemy wins. Folding or winning any share of a contested pot exempts that
+seat. A refund of an uncalled bet leaves the hand eligible for scoring.
+
+| Losing enemy hand | Suspicion |
+| --- | ---: |
+| High card through two pair | 0 |
+| Three of a kind | 5 |
+| Straight | 6 |
+| Flush | 7 |
+| Full house | 8 |
+| Four of a kind | 9 |
+| Straight flush | 10 |
+
+A fold win awards the entire pot immediately. At showdown, each distinct
+contribution level forms a pot layer. Every contributor funds the layer up to
+that level, including folded seats. The strongest eligible live hands share it
+evenly, with odd chips going to tied winners in ascending seat order. A
+single-contributor layer returns to its owner. Settlement credits the stacks,
+empties the pot, and retains the hand's contributions for inspection.
+
+After payouts and cooler scoring, first award victory if all enemies are
+bankrupt, then resolve a full suspicion meter as caught, then resolve a
+bankrupt controlled seat as a loss. Suspicion caps at 100. A short stack
+can open preflop all-in below the table minimum.
+
+`StartNewHand()` carries stacks forward and skips bankrupt seats for cards
+and actions while keeping their indices. After a terminal outcome,
+`StartNewMatch()` restores every starting stack, clears suspicion, swap count
+and payouts, and deals hand one. Match state lives in memory.
 
 ## Unity controls
 
@@ -75,7 +113,7 @@ The state model does not yet persist history, calculate suspicion, or choose act
 `CheckOrCall()`, `RaiseMinimum()`, `FoldCurrentPlayer()`, and `SwapReservedCard(int)`
 methods can be connected to UI. Optional button fields are wired at startup. Assign
 only those fields or Inspector event listeners, not both. Debug context-menu commands
-on the component allow advancing and acting without scene buttons. Existing labels
+on the component allow advancing and taking controlled-player actions without scene buttons. Existing labels
 continue displaying hands and board, and optional fields add street, reserved cards,
 discards, pot, and acting-player information.
 
@@ -95,19 +133,17 @@ a board card while the displaced card remains dead. Fold winners have 100% equit
 folded players have zero. Preflop displays a placeholder until sampling is added.
 
 Snapshots and events contain authoritative secret information. The test view is
-deliberately omniscient. Future enemy AI must receive filtered observations/ranges,
-not these snapshots directly. Card `faceUp` flags are debug data, not access control.
+deliberately omniscient. Enemy turns use a separate filtered observation with the acting seat’s
+hole cards, visible board, live opponents and public betting information. Card `faceUp` flags are debug data, not access control.
 
 ## Current prototype limits
 
 - No blinds, antes, dealer rotation, or burn cards.
 - Full minimum raises and all-in calls are supported; short all-in raises are not.
-- Pot/contribution tracking is implemented; payouts, side-pot settlement, and
-  persistent stacks between hands are not. New hand intentionally resets all stacks.
-- Test-scene betting buttons act for the current seat so every case can be tested.
-  Enemy decisions and player-facing turn controls remain separate future systems.
+- The evaluator scene defaults to automatic enemy turns. Its **Controle: IA** button
+  switches to manual testing for every seat.
 - Equity is showdown share, not a payout calculation for differing pot eligibility.
-- No suspicion meter or saved equity-event history yet.
+- Equity-event history is still pending.
 
 Run `dotnet run --project Tests/PokerHandEvaluatorChecks -c Release` with .NET 10 for
 state, betting, swap, equity, and hand-comparison checks, including 100 random complete
