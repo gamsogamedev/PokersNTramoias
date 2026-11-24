@@ -33,7 +33,7 @@ public class DealerManager : MonoBehaviour
     public event Action<PokerGameEvent> StateChanged;
     private UnityEngine.Events.UnityAction[] swapActions;
 
-    private Image suspicionFill;
+    [SerializeField] private Image suspicionFill;
     private readonly PokerEnemyTurns enemyTurns = new PokerEnemyTurns();
     private bool PlayerCanAct => Game != null && Game.ActingPlayerIndex == Game.ControlledPlayerIndex;
 
@@ -42,7 +42,6 @@ public class DealerManager : MonoBehaviour
 
     private void Start()
     {
-        if (textoStreet != null) suspicionFill = PokerMatchDisplay.CreateBar(textoStreet.transform, -35, 360);
         if (nextStreetButton != null) nextStreetButton.onClick.AddListener(AdvanceStreet);
         if (checkCallButton != null) checkCallButton.onClick.AddListener(CheckOrCall);
         if (raiseButton != null) raiseButton.onClick.AddListener(RaiseMinimum);
@@ -124,7 +123,7 @@ public class DealerManager : MonoBehaviour
         if (textoMesa != null) textoMesa.text = $"Mesa: {CardsText(state.Board)}";
         if (textoStreet != null) textoStreet.text = $"Hand {state.HandNumber} / {state.Street}"
             + $" / Suspeita {state.Suspicion}/100";
-        if (suspicionFill != null) PokerMatchDisplay.SetLevel(suspicionFill, state.Suspicion);
+        if (suspicionFill != null) suspicionFill.fillAmount = state.Suspicion / 100f;
         if (textoReservas != null) textoReservas.text = $"Reserved: {CardsText(state.ReservedCards)}";
         if (textoDescartes != null) textoDescartes.text = $"Discards: {CardsText(state.Discards)}";
         if (textoApostas != null) textoApostas.text = $"Pot: {state.Pot} | Bet: {state.CurrentBet} | "
